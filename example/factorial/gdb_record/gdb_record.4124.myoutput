@@ -1,0 +1,310 @@
+  Reading 4-byte magic cookie RECORD_FULL_FILE_MAGIC (0x20091016)
+  Reading memory 0x7fffffffe1b4=b'\x05\x00\x00\x00'
+  Reading register #16 = b'5\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=1, offset=614447
+
+  Reading memory 0x7fffffffe1bc=b'\x01\x00\x00\x00'
+  Reading register #16 = b'<\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=2, offset=614486
+
+  Reading memory 0x7fffffffe1b8=b'\x01\x00\x00\x00'
+  Reading register #16 = b'C\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=3, offset=614525
+
+  Reading register #16 = b'S\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=4, offset=614547
+
+  Reading register #0 = b'\x01\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #16 = b'V\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=5, offset=614582
+
+  Reading register #17 = b'\x97\x02\x00\x00'
+  Reading register #16 = b'Y\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=6, offset=614613
+
+  Reading register #16 = b'E\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=7, offset=614635
+
+  Reading register #0 = b'\x01\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #16 = b'H\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=8, offset=614670
+
+  Reading register #0 = b'\x01\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #17 = b'\x02\x02\x00\x00'
+  Reading register #16 = b'L\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=9, offset=614714
+
+  Reading memory 0x7fffffffe1bc=b'\x01\x00\x00\x00'
+  Reading register #16 = b'O\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=10, offset=614753
+
+  Reading memory 0x7fffffffe1b8=b'\x02\x00\x00\x00'
+  Reading register #17 = b'\x02\x02\x00\x00'
+  Reading register #16 = b'S\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=11, offset=614801
+
+  Reading register #0 = b'\x02\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #16 = b'V\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=12, offset=614836
+
+  Reading register #17 = b'\x93\x02\x00\x00'
+  Reading register #16 = b'Y\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=13, offset=614867
+
+  Reading register #16 = b'E\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=14, offset=614889
+
+  Reading register #0 = b'\x01\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #16 = b'H\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=15, offset=614924
+
+  Reading register #0 = b'\x02\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #17 = b'\x02\x02\x00\x00'
+  Reading register #16 = b'L\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=16, offset=614968
+
+  Reading memory 0x7fffffffe1bc=b'\x02\x00\x00\x00'
+  Reading register #16 = b'O\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=17, offset=615007
+
+  Reading memory 0x7fffffffe1b8=b'\x03\x00\x00\x00'
+  Reading register #17 = b'\x06\x02\x00\x00'
+  Reading register #16 = b'S\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=18, offset=615055
+
+  Reading register #0 = b'\x03\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #16 = b'V\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=19, offset=615090
+
+  Reading register #17 = b'\x93\x02\x00\x00'
+  Reading register #16 = b'Y\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=20, offset=615121
+
+  Reading register #16 = b'E\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=21, offset=615143
+
+  Reading register #0 = b'\x02\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #16 = b'H\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=22, offset=615178
+
+  Reading register #0 = b'\x06\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #17 = b'\x06\x02\x00\x00'
+  Reading register #16 = b'L\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=23, offset=615222
+
+  Reading memory 0x7fffffffe1bc=b'\x06\x00\x00\x00'
+  Reading register #16 = b'O\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=24, offset=615261
+
+  Reading memory 0x7fffffffe1b8=b'\x04\x00\x00\x00'
+  Reading register #17 = b'\x02\x02\x00\x00'
+  Reading register #16 = b'S\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=25, offset=615309
+
+  Reading register #0 = b'\x04\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #16 = b'V\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=26, offset=615344
+
+  Reading register #17 = b'\x97\x02\x00\x00'
+  Reading register #16 = b'Y\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=27, offset=615375
+
+  Reading register #16 = b'E\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=28, offset=615397
+
+  Reading register #0 = b'\x06\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #16 = b'H\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=29, offset=615432
+
+  Reading register #0 = b'\x18\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #17 = b'\x06\x02\x00\x00'
+  Reading register #16 = b'L\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=30, offset=615476
+
+  Reading memory 0x7fffffffe1bc=b'\x18\x00\x00\x00'
+  Reading register #16 = b'O\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=31, offset=615515
+
+  Reading memory 0x7fffffffe1b8=b'\x05\x00\x00\x00'
+  Reading register #17 = b'\x06\x02\x00\x00'
+  Reading register #16 = b'S\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=32, offset=615563
+
+  Reading register #0 = b'\x05\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #16 = b'V\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=33, offset=615598
+
+  Reading register #17 = b'F\x02\x00\x00'
+  Reading register #16 = b'Y\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=34, offset=615629
+
+  Reading register #16 = b'E\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=35, offset=615651
+
+  Reading register #0 = b'\x18\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #16 = b'H\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=36, offset=615686
+
+  Reading register #0 = b'x\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #17 = b'\x06\x02\x00\x00'
+  Reading register #16 = b'L\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=37, offset=615730
+
+  Reading memory 0x7fffffffe1bc=b'x\x00\x00\x00'
+  Reading register #16 = b'O\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=38, offset=615769
+
+  Reading memory 0x7fffffffe1b8=b'\x06\x00\x00\x00'
+  Reading register #17 = b'\x06\x02\x00\x00'
+  Reading register #16 = b'S\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=39, offset=615817
+
+  Reading register #0 = b'\x06\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #16 = b'V\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=40, offset=615852
+
+  Reading register #17 = b'\x02\x02\x00\x00'
+  Reading register #16 = b'Y\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=41, offset=615883
+
+  Reading register #16 = b'[\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=42, offset=615905
+
+  Reading register #3 = b'x\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #16 = b'^\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=43, offset=615940
+
+  Reading register #0 = b'\x05\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #16 = b'a\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=44, offset=615975
+
+  Reading register #4 = b'\x05\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #16 = b'c\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=45, offset=616010
+
+  Reading register #5 = b'\x10 @\x00\x00\x00\x00\x00'
+  Reading register #16 = b'h\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=46, offset=616045
+
+  Reading register #0 = b'\x00\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #16 = b'm\x11@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=47, offset=616080
+
+  Reading register #7 = b'\xa8\xe1\xff\xff\xff\x7f\x00\x00'
+  Reading memory 0x7fffffffe1a8=b'r\x11@\x00\x00\x00\x00\x00'
+  Reading register #16 = b'0\x10@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=48, offset=616136
+
+  Reading register #17 = b'\x02\x02\x00\x00'
+  Reading register #16 = b'6\x10@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=49, offset=616167
+
+  Reading register #7 = b'\xa0\xe1\xff\xff\xff\x7f\x00\x00'
+  Reading memory 0x7fffffffe1a0=b'\x00\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #16 = b';\x10@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=50, offset=616223
+
+  Reading register #16 = b' \x10@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=51, offset=616245
+
+  Reading register #7 = b'\x98\xe1\xff\xff\xff\x7f\x00\x00'
+  Reading memory 0x7fffffffe198=b' \xe2\xff\xf7\xff\x7f\x00\x00'
+  Reading register #16 = b'&\x10@\x00\x00\x00\x00\x00'
+  Reading record_full_end instruction_number=52, offset=616301
+
+  Reading register #17 = b'\x02\x02\x00\x00'
+  Reading register #16 = b'\x10\xac\xfc\xf7\xff\x7f\x00\x00'
+  Reading record_full_end instruction_number=53, offset=616332
+
+  Reading register #16 = b'\x14\xac\xfc\xf7\xff\x7f\x00\x00'
+  Reading record_full_end instruction_number=54, offset=616354
+
+  Reading register #7 = b'\x90\xe1\xff\xff\xff\x7f\x00\x00'
+  Reading memory 0x7fffffffe190=b'\x00\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #16 = b'\x15\xac\xfc\xf7\xff\x7f\x00\x00'
+  Reading record_full_end instruction_number=55, offset=616410
+
+  Reading register #1 = b'\x90\xe1\xff\xff\xff\x7f\x00\x00'
+  Reading register #16 = b'\x18\xac\xfc\xf7\xff\x7f\x00\x00'
+  Reading record_full_end instruction_number=56, offset=616445
+
+  Reading register #7 = b'\x80\xe1\xff\xff\xff\x7f\x00\x00'
+  Reading register #17 = b'\x02\x02\x00\x00'
+  Reading register #16 = b'\x1c\xac\xfc\xf7\xff\x7f\x00\x00'
+  Reading record_full_end instruction_number=57, offset=616489
+
+  Reading register #7 = b'\x00\xde\xff\xff\xff\x7f\x00\x00'
+  Reading register #17 = b'\x06\x02\x00\x00'
+  Reading register #16 = b'#\xac\xfc\xf7\xff\x7f\x00\x00'
+  Reading record_full_end instruction_number=58, offset=616533
+
+  Reading memory 0x7fffffffde00=b'\x00\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #16 = b"'\xac\xfc\xf7\xff\x7f\x00\x00"
+  Reading record_full_end instruction_number=59, offset=616576
+
+  Reading memory 0x7fffffffde08=b'\x00>@\x00\x00\x00\x00\x00'
+  Reading register #16 = b',\xac\xfc\xf7\xff\x7f\x00\x00'
+  Reading record_full_end instruction_number=60, offset=616619
+
+  Reading memory 0x7fffffffde10=b'x\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #16 = b'1\xac\xfc\xf7\xff\x7f\x00\x00'
+  Reading record_full_end instruction_number=61, offset=616662
+
+  Reading memory 0x7fffffffde18=b'\x05\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #16 = b'6\xac\xfc\xf7\xff\x7f\x00\x00'
+  Reading record_full_end instruction_number=62, offset=616705
+
+  Reading memory 0x7fffffffde20=b'\x10 @\x00\x00\x00\x00\x00'
+  Reading register #16 = b';\xac\xfc\xf7\xff\x7f\x00\x00'
+  Reading record_full_end instruction_number=63, offset=616748
+
+  Reading memory 0x7fffffffde28=b'\xf0\xae\xdf\xf7\xff\x7f\x00\x00'
+  Reading register #16 = b'@\xac\xfc\xf7\xff\x7f\x00\x00'
+  Reading record_full_end instruction_number=64, offset=616791
+
+  Reading memory 0x7fffffffde30=b'P\x1d\xfd\xf7\xff\x7f\x00\x00'
+  Reading register #16 = b'E\xac\xfc\xf7\xff\x7f\x00\x00'
+  Reading record_full_end instruction_number=65, offset=616834
+
+  Reading register #0 = b'\xee\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #16 = b'J\xac\xfc\xf7\xff\x7f\x00\x00'
+  Reading record_full_end instruction_number=66, offset=616869
+
+  Reading register #3 = b'\x00\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #17 = b'F\x02\x00\x00'
+  Reading register #16 = b'L\xac\xfc\xf7\xff\x7f\x00\x00'
+  Reading record_full_end instruction_number=67, offset=616913
+
+  Reading memory 0x7fffffffe040=b'\x00\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #16 = b'T\xac\xfc\xf7\xff\x7f\x00\x00'
+  Reading record_full_end instruction_number=68, offset=616956
+
+  Reading memory 0x7fffffffe048=b'\x00\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #16 = b'\\\xac\xfc\xf7\xff\x7f\x00\x00'
+  Reading record_full_end instruction_number=69, offset=616999
+
+  Reading memory 0x7fffffffe050=b'\x00\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #16 = b'd\xac\xfc\xf7\xff\x7f\x00\x00'
+  Reading record_full_end instruction_number=70, offset=617042
+
+  Reading memory 0x7fffffffe058=b'\x00\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #16 = b'l\xac\xfc\xf7\xff\x7f\x00\x00'
+  Reading record_full_end instruction_number=71, offset=617085
+
+  Reading memory 0x7fffffffe060=b'\x00\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #16 = b't\xac\xfc\xf7\xff\x7f\x00\x00'
+  Reading record_full_end instruction_number=72, offset=617128
+
+  Reading memory 0x7fffffffe068=b'\x00\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #16 = b'|\xac\xfc\xf7\xff\x7f\x00\x00'
+  Reading record_full_end instruction_number=73, offset=617171
+
+  Reading memory 0x7fffffffe070=b'\x00\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #16 = b'\x84\xac\xfc\xf7\xff\x7f\x00\x00'
+  Reading record_full_end instruction_number=74, offset=617214
+
+  Reading memory 0x7fffffffe078=b'\x00\x00\x00\x00\x00\x00\x00\x00'
+  Reading register #16 = b'\x8c\xac\xfc\xf7\xff\x7f\x00\x00'
+  Reading record_full_end instruction_number=75, offset=617257
+
+Restored records from core file new2/gdb_record.4124.

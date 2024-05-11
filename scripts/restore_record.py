@@ -1,197 +1,216 @@
 import struct
 import argparse
 from elftools.elf.elffile import ELFFile
+from enum import Enum
+import io
+from abc import ABC, abstractmethod
 
+RECORDS_SECTION_NAME = "precord"
 RECORD_FULL_FILE_MAGIC = 0x20091016  # Define the magic value
-record_full_end = 0
-record_full_reg = 1
-record_full_mem = 2
+RECORD_FULL_FILE_MAGIC_STRUCT = "!I"
+RECORD_FULL_FILE_MAGIC_SIZE = struct.calcsize(RECORD_FULL_FILE_MAGIC_STRUCT)
 
-def find_section(elf_file_path, section_name):
-    f = open(elf_file_path, 'rb')
+
+class RecordType(Enum):
+    RECORD_FULL_END = 0
+    RECORD_FULL_REG = 1
+    RECORD_FULL_MEM = 2
+
+
+RECORD_TYPE_STRUCT = "B"
+RECORD_TTPE_SIZE = struct.calcsize(RECORD_TYPE_STRUCT)
+
+
+def find_section_by_name(elf_file_path, section_name):
+    f = open(elf_file_path, "rb")
     elf_file = ELFFile(f)
-        
+
     # Find the section by name
     return elf_file.get_section_by_name(section_name)
-        
-        # if section:
-        #     # Get the offset of the section
-        #     section_offset = section['sh_offset']
-            
-        #     # Seek to the offset in the file
-        #     f.seek(section_offset)
-            
-        #     # Read the content of the section
-        #     section_content = f.read(section['sh_size'])
-            
-        #     return section_content
-        # else:
-        #     return None
 
 
-def record_full_reg_alloc(regnum):
-    rec = {}  # Create a new record_full_entry structure (Python dictionary)
-    rec['type'] = 'record_full_reg'  # Set the type to record_full_reg
-    rec['u'] = {}  # Create a nested dictionary for the 'u' field
+class BaseRecord(ABC):
+    @abstractmethod
+    def from_file(cls, core_file):
+        pass
 
-    # Set the fields specific to record_full_reg
-    rec['u']['reg'] = {
-        'num': regnum,
-        'len': 8, # Assuming register size is always 8 bytes
-        'u' : { 'ptr' : None } # Initialize ptr to None since we don't need dynamic memory allocation
-    }
+    def from_bytes(cls, bytes):
+        io_bytes = io.BytesIO(bytes)
+        return cls.from_file(io_bytes)
 
-    return rec
-
-def record_full_mem_alloc(addr, len_val):
-    rec = {}  # Create a new record_full_entry structure (Python dictionary)
-    rec['type'] = 'record_full_mem'  # Set the type to record_full_mem
-    rec['addr'] = addr
-    rec['len'] = len_val
-    
-    # Check if dynamic memory allocation is required
-    if len_val > struct.calcsize('P'):
-        # Allocate memory for the memory value
-        rec['u'] = {'ptr': bytearray(len_val)}
-    else:
-        rec['u'] = {'buf': bytearray(struct.calcsize('P'))}
-
-    return rec
-
-def record_full_end_alloc():
-    rec = {}
-    rec['type'] = 'record_full_end'
-    rec['u'] = {'end': {'sigval': None, 'insn_num': None}}
-    return rec
+    def __repr__(self):
+        return str(self)
 
 
-def record_full_restore(core_file_path, initial_bfd_offset, osec_size, record_debug=True):
+class RegisterRecord(BaseRecord):
+    RECORD_TYPE = RecordType.RECORD_FULL_REG
+    REGNUM_STRUCT = "!I"
+    REGNUM_SIZE = struct.calcsize(REGNUM_STRUCT)
+
+    def __init__(self, regnum, reglen, regval, raw_record):
+        self.regnum = regnum
+        self.reglen = reglen
+        self.regval = regval
+        self.raw_record = raw_record
+
+    def __str__(self):
+        return f"RegisterValue(regnum={self.regnum}, reglen={self.reglen}, regval={self.regval})"
+
+    @classmethod
+    def from_file(cls, core_file):
+        # Get register number
+        regnum_raw = core_file.read(RegisterRecord.REGNUM_SIZE)
+        assert len(regnum_raw) == RegisterRecord.REGNUM_SIZE
+        regnum = struct.unpack(RegisterRecord.REGNUM_STRUCT, regnum_raw)[0]
+
+        # TODO: should be fixed with a table or adding to the struct
+        # Register size
+        reglen = 8
+        if regnum == 17:
+            reglen = 4
+
+        # Read value
+        regval = core_file.read(reglen)
+        assert len(regval) == reglen
+
+        raw_record = regnum_raw + regval
+        return cls(regnum, reglen, regval, raw_record)
+
+
+class MemoryRecord(BaseRecord):
+    RECORD_TYPE = RecordType.RECORD_FULL_MEM
+    MEMLEN_STRUCT = "!I"
+    MEMLEN_SIZE = struct.calcsize(MEMLEN_STRUCT)
+
+    MEMADDR_STRUCT = "!Q"
+    MEMADDR_SIZE = struct.calcsize(MEMADDR_STRUCT)
+
+    def __init__(self, memaddr, memlen, memval, raw_record):
+        self.memaddr = memaddr
+        self.memlen = memlen
+        self.memval = memval
+        self.raw_record = raw_record
+
+    def __str__(self):
+        return f"MemoryValue(memaddr={hex(self.memaddr)}, memlen={self.memlen}, memval={self.memval})"
+
+    @classmethod
+    def from_file(cls, core_file):
+        memlen_raw = core_file.read(4)
+        assert len(memlen_raw) == MemoryRecord.MEMLEN_SIZE
+        memlen = struct.unpack("!I", memlen_raw)[0]
+
+        memaddr_raw = core_file.read(MemoryRecord.MEMADDR_SIZE)
+        assert len(memaddr_raw) == MemoryRecord.MEMADDR_SIZE
+        memaddr = struct.unpack("!Q", memaddr_raw)[0]
+
+        memval = core_file.read(memlen)
+        raw_record = memlen_raw + memaddr_raw + memval
+        return cls(memaddr, memlen, memval, raw_record)
+
+
+class RecordFullEnd(BaseRecord):
+    SIGVAL_STRUCT = "!I"
+    SIGVAL_SIZE = struct.calcsize(SIGVAL_STRUCT)
+
+    INSN_NUM_STRUCT = "!I"
+    INSN_NUM_SIZE = struct.calcsize(INSN_NUM_STRUCT)
+
+    def __init__(self, sigval, insn_num, raw_record):
+        self.sigval = sigval
+        self.insn_num = insn_num
+        self.raw_record = raw_record
+
+    def __str__(self):
+        return f"RecordFullEnd(sigval={self.sigval}, insn_num={self.insn_num})"
+
+    @classmethod
+    def from_file(cls, core_file):
+        sigval_raw = core_file.read(RecordFullEnd.SIGVAL_SIZE)
+        assert len(sigval_raw) == RecordFullEnd.SIGVAL_SIZE
+        sigval = struct.unpack(RecordFullEnd.SIGVAL_STRUCT, sigval_raw)[0]
+
+        insn_num_raw = core_file.read(RecordFullEnd.INSN_NUM_SIZE)
+        assert len(insn_num_raw) == RecordFullEnd.INSN_NUM_SIZE
+        insn_num = struct.unpack(RecordFullEnd.INSN_NUM_STRUCT, insn_num_raw)[0]
+
+        raw_record = sigval_raw + insn_num_raw
+        return cls(sigval, insn_num, raw_record)
+
+
+RECORD_BUILDERS = {
+    RecordType.RECORD_FULL_END.value: RecordFullEnd,
+    RecordType.RECORD_FULL_REG.value: RegisterRecord,
+    RecordType.RECORD_FULL_MEM.value: MemoryRecord,
+}
+
+
+def parse_records_from_section(core_file_path, initial_bfd_offset, osec_size, record_debug=True):
     # Initialize variables
-    record_full_arch_list_head = None
-    record_full_arch_list_tail = None
-    record_full_insn_num = 0
+    record_full_insn_idx = 1  # Start from 1
     bfd_offset = initial_bfd_offset
     record_full_arch_list = []
-    
+
     # Open the core file
-    with open(core_file_path, 'rb') as core_file:
-        # Check if there is a core BFD associated with the current program space
-        
+    with open(core_file_path, "rb") as core_file:
         # Check the magic code
-        core_file.seek(bfd_offset)
-        magic = struct.unpack("!I", core_file.read(4))[0]
-        bfd_offset += 4  # Update bfd_offset by the number of bytes read
-        if magic != RECORD_FULL_FILE_MAGIC:
-            raise Exception("Version mis-match or file format error in core file.")
+        core_file.seek(initial_bfd_offset)
+        magic_raw = core_file.read(RECORD_FULL_FILE_MAGIC_SIZE)
+        magic = struct.unpack(RECORD_FULL_FILE_MAGIC_STRUCT, magic_raw)[0]
+        assert len(magic_raw) == RECORD_FULL_FILE_MAGIC_SIZE
+        assert magic == RECORD_FULL_FILE_MAGIC, "Version mis-match or file format error in core file."
+        bfd_offset += RECORD_FULL_FILE_MAGIC_SIZE  # Update bfd_offset by the number of bytes read
+
         if record_debug:
             print(f"  Reading 4-byte magic cookie RECORD_FULL_FILE_MAGIC (0x{magic:08X})")
-        
+
         # Restore entries from core file
-        try:
-            while bfd_offset < initial_bfd_offset + osec_size:
-                rec = None
-                # Read entry type
-                rectype = struct.unpack("B", core_file.read(1))[0]
-                bfd_offset += 1  # Update bfd_offset by the number of bytes read
-                
-                if rectype == record_full_reg:  # Register entry
-                    # Get register number
-                    regnum_val = core_file.read(4)
-                    assert len(regnum_val) == 4 
-                    bfd_offset += 4  # Update bfd_offset by the number of bytes read
+        while bfd_offset < initial_bfd_offset + osec_size:
+            # Read entry type
+            record_type_raw = core_file.read(RECORD_TTPE_SIZE)
+            record_type = struct.unpack(RECORD_TYPE_STRUCT, record_type_raw)[0]
+            bfd_offset += RECORD_TTPE_SIZE
 
-                    regnum = struct.unpack("!I", regnum_val)[0]
-                    rec = record_full_reg_alloc(regnum)
-                    if regnum == 17:
-                        rec['u']['reg']['len'] = 4
-                    
-                    # Read value
-                    val_len = rec['u']['reg']['len']
-                    val = core_file.read(val_len)
-                    assert len(val) == val_len
-                    bfd_offset += val_len  # Update bfd_offset by the number of bytes read
+            record_builder = RECORD_BUILDERS.get(record_type)
+            if record_builder is None:
+                raise ValueError(f"Unknown record type: {record_type}")
 
-                    rec['u']['reg']['u']['ptr'] = val
-                    
-                    if record_debug:
-                        print(f"  Reading register #{rec['u']['reg']['num']} = {rec['u']['reg']['u']['ptr']}")
-                
-                elif rectype == record_full_mem:  # Memory entry
-                    # Get length
-                    
-                    len_val = struct.unpack("!I", core_file.read(4))[0]
-                    bfd_offset += 4  # Update bfd_offset by the number of bytes read
-                    
-                    # Get address
-                    
-                    addr = struct.unpack("!Q", core_file.read(8))[0]
-                    bfd_offset += 8  # Update bfd_offset by the number of bytes read
-                    
-                    rec = record_full_mem_alloc(addr, len_val)
-                    
-                    # Read value
-                    val_len = rec['len']
-                    
-                    val = core_file.read(val_len)
-                    bfd_offset += val_len  # Update bfd_offset by the number of bytes read
-                    if len(val) > struct.calcsize('P'):
-                        rec['u']['ptr'] = val
-                    else:
-                        rec['u']['buf'] = val
-                    
-                    if record_debug:
-                        print(f"  Reading memory {hex(addr)}={val}")
-                
-                elif rectype == record_full_end:  # End entry
-                    rec = record_full_end_alloc()
-                    record_full_insn_num += 1
+            record = record_builder.from_file(core_file)
+            record_len = len(record.raw_record)
+            bfd_offset += record_len
+            if record_debug:
+                print(record)
 
-                    # Get signal value
-                    
-                    sigval = struct.unpack(">i", core_file.read(4))[0]  # Assuming signal value is a signed integer
-                    bfd_offset += 4  # Update bfd_offset by the number of bytes read
-                    rec['u']['end']['sigval'] = sigval
+            if record_type == RecordType.RECORD_FULL_END.value:
+                if record.insn_num != record_full_insn_idx:
+                    print(f"Warning: insn_num mismatch: {record.insn_num} != {record_full_insn_idx}")
+                print()
+                record_full_insn_idx += 1
 
-                    # Get instruction count
-                    
-                    insn_num = struct.unpack(">i", core_file.read(4))[0]  # Assuming instruction count is an unsigned long long
-                    bfd_offset += 4  # Update bfd_offset by the number of bytes read
-                    rec['u']['end']['insn_num'] = insn_num
-                    if record_debug:
-                        print(f"  Reading record_full_end instruction_number={insn_num}, offset={bfd_offset}")
-                        print()
-                
-                if rec is None:
-                    raise Exception('Invalid rec')
-                # Add rec to record arch list
-                record_full_arch_list.append(rec)
-                
-        except Exception as e:
-            print(e)
-            
+            record_full_arch_list.append(record)
+
         # Print success message
-        print(f"Restored records from core file {core_file_path}.")
+        print(f"Successfully restored records from core file {core_file_path}.")
+        print(f"In Total, {record_full_insn_idx - 1} instructions were restored. (records: {len(record_full_arch_list)})")
         return record_full_arch_list
+
 
 def main():
     # Create argument parser
-    parser = argparse.ArgumentParser(description='Read content of a section from an ELF file')
-    
+    parser = argparse.ArgumentParser(description="Read content of a section from an ELF file")
+
     # Add argument for ELF file path
-    parser.add_argument('elf_file', metavar='elf_file', type=str, help='Path to the ELF file')
-    
+    parser.add_argument("elf_file", metavar="elf_file", type=str, help="Path to the ELF file")
+
     # Parse arguments
     args = parser.parse_args()
-    
+
     # Read content of the section
-    section_name = 'precord'
-    section = find_section(args.elf_file, section_name)
-    record_full_restore(args.elf_file, section.header.sh_offset, section.header.sh_size)   
-    # if section_content:
-    #     print("Section content:")
-    #     print(section_content.decode('utf-8'))  # Assuming the content is text
-    # else:
-    #     print("Section not found.")
+    section = find_section_by_name(args.elf_file, RECORDS_SECTION_NAME)
+    initial_bfd_offset, osec_size = section.header.sh_offset, section.header.sh_size
+    records = parse_records_from_section(args.elf_file, initial_bfd_offset, osec_size)
+    return records
+
 
 if __name__ == "__main__":
     main()

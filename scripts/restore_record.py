@@ -1,3 +1,4 @@
+import json
 import struct
 import argparse
 from elftools.elf.elffile import ELFFile
@@ -206,6 +207,8 @@ def extract_registers_size(records):
                 registers_size[record.reglen] = []
             if record.regnum not in registers_size[record.reglen]:
                 registers_size[record.reglen].append(record.regnum)
+    for key in registers_size:
+        registers_size[key].sort()
     return registers_size
 
 
@@ -223,7 +226,10 @@ def main():
     section = find_section_by_name(args.elf_file, RECORDS_SECTION_NAME)
     initial_bfd_offset, osec_size = section.header.sh_offset, section.header.sh_size
     records = parse_records_from_section(args.elf_file, initial_bfd_offset, osec_size)
-    # registed_sizes = extract_registers_size(records)
+    registed_sizes = extract_registers_size(records)
+
+    print("\nRegisters sizes")
+    print(registed_sizes)
     return records
 
 

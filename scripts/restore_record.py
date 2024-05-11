@@ -47,6 +47,9 @@ class RegisterRecord(BaseRecord):
     REGNUM_STRUCT = "!I"
     REGNUM_SIZE = struct.calcsize(REGNUM_STRUCT)
 
+    REGLEN_STRUCT = "!I"
+    REGLEN_SIZE = struct.calcsize(REGLEN_STRUCT)
+
     def __init__(self, regnum, reglen, regval, raw_record):
         self.regnum = regnum
         self.reglen = reglen
@@ -63,17 +66,15 @@ class RegisterRecord(BaseRecord):
         assert len(regnum_raw) == RegisterRecord.REGNUM_SIZE
         regnum = struct.unpack(RegisterRecord.REGNUM_STRUCT, regnum_raw)[0]
 
-        # TODO: should be fixed with a table or adding to the struct
-        # Register size
-        reglen = 8
-        if regnum == 17:
-            reglen = 4
+        reglen_raw = core_file.read(RegisterRecord.REGLEN_SIZE)
+        assert len(reglen_raw) == RegisterRecord.REGLEN_SIZE
+        reglen = struct.unpack(RegisterRecord.REGLEN_STRUCT, reglen_raw)[0]
 
         # Read value
         regval = core_file.read(reglen)
         assert len(regval) == reglen
 
-        raw_record = regnum_raw + regval
+        raw_record = regnum_raw + reglen_raw + regval
         return cls(regnum, reglen, regval, raw_record)
 
 
@@ -191,8 +192,21 @@ def parse_records_from_section(core_file_path, initial_bfd_offset, osec_size, re
 
         # Print success message
         print(f"Successfully restored records from core file {core_file_path}.")
-        print(f"In Total, {record_full_insn_idx - 1} instructions were restored. (records: {len(record_full_arch_list)})")
+        print(
+            f"In Total, {record_full_insn_idx - 1} instructions were restored. (records: {len(record_full_arch_list)})"
+        )
         return record_full_arch_list
+
+
+def extract_registers_size(records):
+    registers_size = {}
+    for record in records:
+        if type(record) == RegisterRecord:
+            if record.reglen not in registers_size:
+                registers_size[record.reglen] = []
+            if record.regnum not in registers_size[record.reglen]:
+                registers_size[record.reglen].append(record.regnum)
+    return registers_size
 
 
 def main():
@@ -209,6 +223,7 @@ def main():
     section = find_section_by_name(args.elf_file, RECORDS_SECTION_NAME)
     initial_bfd_offset, osec_size = section.header.sh_offset, section.header.sh_size
     records = parse_records_from_section(args.elf_file, initial_bfd_offset, osec_size)
+    # registed_sizes = extract_registers_size(records)
     return records
 
 

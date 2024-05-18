@@ -1,6 +1,7 @@
 import gdb
 import struct
 import sys
+import pprint
 
 WORD_SIZE_BYTES = 8
 
@@ -10,6 +11,8 @@ dump_counter = 1
 # Dictionaries to keep track of executed instructions and source lines per frame level
 executed_instructions = {}
 executed_source_lines = {}
+
+ALL_FRAMES = []
 
 class FullDisassembly(gdb.Command):
     """Disassemble the entire text section of the binary."""
@@ -29,7 +32,6 @@ class FullDisassembly(gdb.Command):
                 text_end = int(parts[2], 16)
                 break
 
-        print(gdb.execute(f"disassemble {text_start}, {text_end}", to_string=True))
         if text_start is not None and text_end is not None:
             print(gdb.execute(f"disassemble {text_start}, {text_end}", to_string=True))
         else:
@@ -53,7 +55,7 @@ class BreakpointHandler(gdb.Breakpoint):
         frames = [None] + frames + [None]
         while frames[i]:
             cur_frame  = frames[i]
-            assert cur_frame['previous_sp'] == cur_frame['frame_base']
+            assert cur_frame['previous_sp'] == cur_frame['stack_frame_address']
 
             newer_frame = frames[i - 1]
             if newer_frame is None:
@@ -63,7 +65,7 @@ class BreakpointHandler(gdb.Breakpoint):
             else:
                 cur_frame['rsp'] = newer_frame['previous_sp']
                 if cur_frame['caller_of']:
-                    assert cur_frame['caller_of'] == newer_frame['frame_base']
+                    assert cur_frame['caller_of'] == newer_frame['stack_frame_address']
             
             older_frame = frames[i + 1]
             if older_frame is not None:
@@ -72,37 +74,26 @@ class BreakpointHandler(gdb.Breakpoint):
                 saved_rip_content = self._convert_to_16x(struct.unpack('<Q', saved_rip_content_raw.tobytes())[0])
                 assert saved_rip_content == cur_frame['saved_rip']
                 if cur_frame['called_by']:
-                    assert cur_frame['called_by'] == older_frame['frame_base']
+                    assert cur_frame['called_by'] == older_frame['stack_frame_address']
             i += 1
                 
         
     def dump_state(self):
-        # Print registers
-        print()
-        print(f"#{dump_counter}")
-        print("===================================================================")
         registers_dict = self.parse_registers()
-        print(f"Register contents: {registers_dict}")
+        
         frames = []
         frame = gdb.newest_frame()
         while frame:
             frame_info_dict = self.extract_frame_info(frame)
             frames.append(frame_info_dict)
-
-            # pc = frame.pc()
-            # print(f"Currently executing at {pc}:")
-            # print(gdb.execute(f"list *{pc}", to_string=True))
             frame = frame.older() 
-        
         self.validate_frames(frames, registers_dict)
-
-        # print(frames)
         for frame_info_dict in frames:
-            print(frame_info_dict)
-            self.print_frame_info(frame_info_dict)
-            self.dump_frame_memory(frame_info_dict['frame_base'], frame_info_dict['rsp'])
-        print("===================================================================")
-        sys.stdout.flush()
+            frame_info_dict['memory'] = self.dump_frame_memory(frame_info_dict)
+
+        global ALL_FRAMES
+        ALL_FRAMES.append((dump_counter, registers_dict, frames))
+        
 
     def parse_registers(self):
         registers_output = gdb.execute("info registers", to_string=True)
@@ -116,20 +107,16 @@ class BreakpointHandler(gdb.Breakpoint):
                 registers_dict[reg_name] = reg_value
         return registers_dict
 
-    def dump_frame_memory(self, frame_base, rsp):
-        frame_base = int(frame_base, 16)
-        rsp = int(rsp, 16)
+    def dump_frame_memory(self, frame_info_dict):
+        stack_frame_address, rsp = int(frame_info_dict['stack_frame_address'],16), int(frame_info_dict['rsp'],16)
         memory = []
         word_size = WORD_SIZE_BYTES
-        print(f"frame_base: {frame_base:016x} rsp: {rsp:016x}")
-        for address in list(range(frame_base, rsp - word_size, -word_size))[::-1]:
+        for address in list(range(stack_frame_address + word_size, rsp - word_size, -word_size)):
             content = gdb.selected_inferior().read_memory(address, word_size)
             content_be = struct.unpack('<Q', content.tobytes())[0]
             content_str = f"{content_be:016x}"
             address_str = f"{address:016x}"
-            print(f'{address_str} : {content_str}')
-            memory.append((address, content_str))
-        print()
+            memory.append((address_str, content_str))
         return memory
     
     def _convert_to_16x(self, address):
@@ -137,11 +124,10 @@ class BreakpointHandler(gdb.Breakpoint):
 
     def extract_frame_info(self, frame):
         frame_info = gdb.execute(f"info frame {frame.level()}", to_string=True)
-        print(f"info frame {frame.level()}")
-        print(frame_info)
         frame_info_dict = {
             'level': frame.level(),
-            'frame_base': None,
+            'frame_info': frame_info,
+            'stack_frame_address': None,
             'locals': {
                 'address': None,
                 'variables': {}
@@ -156,14 +142,20 @@ class BreakpointHandler(gdb.Breakpoint):
             'saved_rip': None,
             'saved_rip_address': None,
             'called_by': None,
-            'caller_of': None
+            'caller_of': None,
+            'current_c_source': None,
+            'current_asm_source': None,
+            'memory': None,
+            'function_name': None,
+            'source_location': None
+
         }
 
         lines = frame_info.split('\n')
         for line in lines:
             if line.startswith("Stack frame at"):
                 parts = line.split()
-                frame_info_dict['frame_base'] = self._convert_to_16x(int(parts[3].replace(':',''), 16))
+                frame_info_dict['stack_frame_address'] = self._convert_to_16x(int(parts[3].replace(':',''), 16))
             if line.strip().startswith("Arglist at"):
                 parts = line.split()
                 frame_info_dict['args']['address'] = self._convert_to_16x(int(parts[2].replace(',', ''), 16))
@@ -183,12 +175,15 @@ class BreakpointHandler(gdb.Breakpoint):
                 parts = line.split()
                 frame_info_dict['saved_rip'] = self._convert_to_16x(int(parts[-1], 16))
                 frame_info_dict['rip'] = self._convert_to_16x(int(parts[2], 16))
+                frame_info_dict['function_name'] = parts[4]
+                frame_info_dict['source_location'] = parts[5].strip('();')
             if "called by frame at" in line:
                 parts = line.split()
                 frame_info_dict['called_by'] = self._convert_to_16x(int(parts[-1], 16))
             if "caller of frame at" in line:
                 parts = line.split()
                 frame_info_dict['caller_of'] = self._convert_to_16x(int(parts[-1], 16))
+
 
         # Extract variables in locals and args
         locals_output = gdb.execute("info locals", to_string=True)
@@ -210,6 +205,12 @@ class BreakpointHandler(gdb.Breakpoint):
                     var_value = parts[1].strip()
                     frame_info_dict['args']['variables'][var_name] = hex(int(var_value))
         
+        pc = frame.pc()
+        frame_info_dict['current_c_source'] = gdb.execute(f"list *{pc}", to_string=True)
+        frame_info_dict['current_c_source'] = f'rip: {frame_info_dict["current_c_source"]}'
+        frame_info_dict['current_asm_source'] = gdb.execute(f"disassemble {pc}", to_string=True)
+        frame_info_dict['current_asm_source'] = frame_info_dict['current_asm_source'].replace('=>', 'rip =>')
+        frame_info_dict['current_asm_source'] = frame_info_dict['current_asm_source'].replace('   0x', '       0x')
         return frame_info_dict
 
 class BreakEveryInstruction(gdb.Command):
@@ -271,9 +272,38 @@ BreakEveryInstruction()
 
 # Set the breakpoints and handlers
 gdb.execute("set disassembly-flavor intel")
+gdb.execute("set listsize 30")
 gdb.execute("break_every_instruction")
 gdb.execute("full_disassembly_text_section")
 
 # Start the program
 gdb.execute("run")
+
+def print_state(idx, registers, frames):
+
+    for frame_info_dict in frames:
+        print(f"#{idx}")
+        print("===================================================================")
+        pprint.pprint(registers)
+        print_frame_info_dict = dict(frame_info_dict)
+        del print_frame_info_dict['current_c_source']
+        del print_frame_info_dict['current_asm_source']
+        del print_frame_info_dict['memory']
+        del print_frame_info_dict['frame_info']
+        print()
+        print(frame_info_dict['frame_info'])
+        pprint.pprint(print_frame_info_dict)
+        print()
+        print()
+        print(frame_info_dict['current_c_source'])
+        print(frame_info_dict['current_asm_source'])
+        for address, value in frame_info_dict['memory']:
+            print(f"{address} : {value}")
+        print()
+    print("===================================================================")
+    sys.stdout.flush()
+
+for state in ALL_FRAMES:
+    print_state(*state)
+
 gdb.execute("q")

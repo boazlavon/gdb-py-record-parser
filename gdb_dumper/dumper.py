@@ -8,11 +8,75 @@ WORD_SIZE_BYTES = 8
 # Global counter for dump files
 dump_counter = 1
 
-# Dictionaries to keep track of executed instructions and source lines per frame level
-executed_instructions = {}
-executed_source_lines = {}
+# List to store all frames information
+PROGRAM_STATES = []
 
-ALL_FRAMES = []
+
+class FrameState:
+    def __init__(self, level):
+        self.level = level
+        self.frame_info = None
+        self.stack_frame_address = None
+        self.locals = {"address": None, "variables": {}}
+        self.args = {"address": None, "variables": {}}
+        self.previous_sp = None
+        self.saved_rbp_address = None
+        self.rip = None
+        self.saved_rip = None
+        self.saved_rip_address = None
+        self.called_by = None
+        self.caller_of = None
+        self.current_c_source = None
+        self.current_c_inst = None
+        self.current_asm_source = None
+        self.current_asm_inst = None
+        self.memory = None
+        self.function_name = None
+        self.source_location = None
+        self.frame_info = None
+
+    def __dict__(self):
+        return {
+            "level": self.level,
+            "frame_info": self.frame_info,
+            "stack_frame_address": self.stack_frame_address,
+            "locals": self.locals,
+            "args": self.args,
+            "previous_sp": self.previous_sp,
+            "saved_rbp_address": self.saved_rbp_address,
+            "rip": self.rip,
+            "saved_rip": self.saved_rip,
+            "saved_rip_address": self.saved_rip_address,
+            "called_by": self.called_by,
+            "caller_of": self.caller_of,
+            "current_c_source": self.current_c_source,
+            "current_c_inst": self.current_c_inst,
+            "current_asm_source": self.current_asm_source,
+            "current_asm_inst": self.current_asm_inst,
+            "memory": self.memory,
+            "function_name": self.function_name,
+            "source_location": self.source_location,
+        }
+
+    def __str__(self):
+        return pprint.pformat(self.__dict__())
+
+
+class ProgramState:
+    def __init__(self, idx, registers, frames):
+        self.idx = idx
+        self.registers = registers
+        self.frames = frames
+
+    def __dict__(self):
+        return {
+            "idx": self.idx,
+            "registers": self.registers,
+            "frames": [frame.__dict__() for frame in self.frames],
+        }
+
+    def __str__(self):
+        return pprint.pformat(self.__dict__())
 
 
 class FullDisassembly(gdb.Command):
@@ -45,10 +109,9 @@ class BreakpointHandler(gdb.Breakpoint):
 
     def stop(self):
         global dump_counter
-        # print(dump_counter)
 
         # Dump the current state
-        self.dump_state()
+        self.dump_state(dump_counter)
         dump_counter += 1
 
     def validate_frames(self, frames, registers_dict):
@@ -56,47 +119,49 @@ class BreakpointHandler(gdb.Breakpoint):
         frames = [None] + frames + [None]
         while frames[i]:
             cur_frame = frames[i]
-            assert cur_frame["previous_sp"] == cur_frame["stack_frame_address"]
+            assert cur_frame.previous_sp == cur_frame.stack_frame_address
 
             newer_frame = frames[i - 1]
             if newer_frame is None:
-                assert cur_frame["level"] == 0
-                cur_frame["rsp"] = registers_dict["rsp"]
+                assert cur_frame.level == 0
+                cur_frame.rsp = registers_dict["rsp"]
 
             else:
-                cur_frame["rsp"] = newer_frame["previous_sp"]
-                if cur_frame["caller_of"]:
-                    assert cur_frame["caller_of"] == newer_frame["stack_frame_address"]
+                cur_frame.rsp = newer_frame.previous_sp
+                if cur_frame.caller_of:
+                    assert cur_frame.caller_of == newer_frame.stack_frame_address
 
             older_frame = frames[i + 1]
             if older_frame is not None:
-                assert cur_frame["saved_rip"] == older_frame["rip"]
+                assert cur_frame.saved_rip == older_frame.rip
                 saved_rip_content_raw = gdb.selected_inferior().read_memory(
-                    int(cur_frame["saved_rip_address"], 16), WORD_SIZE_BYTES
+                    int(cur_frame.saved_rip_address, 16), WORD_SIZE_BYTES
                 )
                 saved_rip_content = self._convert_to_16x(
                     struct.unpack("<Q", saved_rip_content_raw.tobytes())[0]
                 )
-                assert saved_rip_content == cur_frame["saved_rip"]
-                if cur_frame["called_by"]:
-                    assert cur_frame["called_by"] == older_frame["stack_frame_address"]
+                assert saved_rip_content == cur_frame.saved_rip
+                if cur_frame.called_by:
+                    assert cur_frame.called_by == older_frame.stack_frame_address
             i += 1
 
-    def dump_state(self):
+    def dump_state(self, idx):
         registers_dict = self.parse_registers()
 
         frames = []
         frame = gdb.newest_frame()
         while frame:
-            frame_info_dict = self.extract_frame_info(frame)
-            frames.append(frame_info_dict)
+            frame_info = self.extract_frame_info(frame)
+            frames.append(frame_info)
             frame = frame.older()
         self.validate_frames(frames, registers_dict)
-        for frame_info_dict in frames:
-            frame_info_dict["memory"] = self.dump_frame_memory(frame_info_dict)
 
-        global ALL_FRAMES
-        ALL_FRAMES.append((dump_counter, registers_dict, frames))
+        for frame_info in frames:
+            frame_info.memory = self.dump_frame_memory(frame_info)
+
+        program_state = ProgramState(idx, registers_dict, frames)
+        global PROGRAM_STATES
+        PROGRAM_STATES.append(program_state)
 
     def parse_registers(self):
         registers_output = gdb.execute("info registers", to_string=True)
@@ -110,10 +175,8 @@ class BreakpointHandler(gdb.Breakpoint):
                 registers_dict[reg_name] = reg_value
         return registers_dict
 
-    def dump_frame_memory(self, frame_info_dict):
-        stack_frame_address, rsp = int(frame_info_dict["stack_frame_address"], 16), int(
-            frame_info_dict["rsp"], 16
-        )
+    def dump_frame_memory(self, frame_info):
+        stack_frame_address, rsp = int(frame_info.stack_frame_address, 16), int(frame_info.rsp, 16)
         memory = []
         word_size = WORD_SIZE_BYTES
         for address in list(range(stack_frame_address + word_size, rsp - word_size, -word_size)):
@@ -129,66 +192,41 @@ class BreakpointHandler(gdb.Breakpoint):
 
     def extract_frame_info(self, frame):
         frame_info = gdb.execute(f"info frame {frame.level()}", to_string=True)
-        frame_info_dict = {
-            "level": frame.level(),
-            "frame_info": frame_info,
-            "stack_frame_address": None,
-            "locals": {"address": None, "variables": {}},
-            "args": {"address": None, "variables": {}},
-            "previous_sp": None,
-            "saved_rbp_address": None,
-            "rip": None,
-            "saved_rip": None,
-            "saved_rip_address": None,
-            "called_by": None,
-            "caller_of": None,
-            "current_c_source": None,
-            "current_c_inst": None,
-            "current_asm_source": None,
-            "current_asm_inst": None,
-            "memory": None,
-            "function_name": None,
-            "source_location": None,
-        }
+        frame_state = FrameState(frame.level())
+        frame_state.frame_info = frame_info
 
         lines = frame_info.split("\n")
         for line in lines:
             if line.startswith("Stack frame at"):
                 parts = line.split()
-                frame_info_dict["stack_frame_address"] = self._convert_to_16x(
-                    int(parts[3].replace(":", ""), 16)
-                )
+                frame_state.stack_frame_address = self._convert_to_16x(int(parts[3].replace(":", ""), 16))
             if line.strip().startswith("Arglist at"):
                 parts = line.split()
-                frame_info_dict["args"]["address"] = self._convert_to_16x(int(parts[2].replace(",", ""), 16))
+                frame_state.args["address"] = self._convert_to_16x(int(parts[2].replace(",", ""), 16))
             if line.strip().startswith("Locals at"):
                 parts = line.split()
-                frame_info_dict["locals"]["address"] = self._convert_to_16x(
-                    int(parts[2].replace(",", ""), 16)
-                )
+                frame_state.locals["address"] = self._convert_to_16x(int(parts[2].replace(",", ""), 16))
             if "Previous frame's sp is" in line:
                 parts = line.split()
-                frame_info_dict["previous_sp"] = self._convert_to_16x(int(parts[-1], 16))
+                frame_state.previous_sp = self._convert_to_16x(int(parts[-1], 16))
             if "rbp at" in line:
                 parts = line.split()
-                frame_info_dict["saved_rbp_address"] = self._convert_to_16x(
-                    int(parts[2].replace(",", ""), 16)
-                )
+                frame_state.saved_rbp_address = self._convert_to_16x(int(parts[2].replace(",", ""), 16))
             if "rip at" in line:
                 parts = line.split()
-                frame_info_dict["saved_rip_address"] = self._convert_to_16x(int(parts[-1], 16))
+                frame_state.saved_rip_address = self._convert_to_16x(int(parts[-1], 16))
             if "saved rip =" in line:
                 parts = line.split()
-                frame_info_dict["saved_rip"] = self._convert_to_16x(int(parts[-1], 16))
-                frame_info_dict["rip"] = self._convert_to_16x(int(parts[2], 16))
-                frame_info_dict["function_name"] = parts[4]
-                frame_info_dict["source_location"] = parts[5].strip("();")
+                frame_state.saved_rip = self._convert_to_16x(int(parts[-1], 16))
+                frame_state.rip = self._convert_to_16x(int(parts[2], 16))
+                frame_state.function_name = parts[4]
+                frame_state.source_location = parts[5].strip("();")
             if "called by frame at" in line:
                 parts = line.split()
-                frame_info_dict["called_by"] = self._convert_to_16x(int(parts[-1], 16))
+                frame_state.called_by = self._convert_to_16x(int(parts[-1], 16))
             if "caller of frame at" in line:
                 parts = line.split()
-                frame_info_dict["caller_of"] = self._convert_to_16x(int(parts[-1], 16))
+                frame_state.caller_of = self._convert_to_16x(int(parts[-1], 16))
 
         # Extract variables in locals and args
         locals_output = gdb.execute("info locals", to_string=True)
@@ -200,7 +238,7 @@ class BreakpointHandler(gdb.Breakpoint):
                 if len(parts) == 2:
                     var_name = parts[0].strip()
                     var_value = parts[1].strip()
-                    frame_info_dict["locals"]["variables"][var_name] = hex(int(var_value))
+                    frame_state.locals["variables"][var_name] = hex(int(var_value))
 
         for line in args_output.split("\n"):
             if line.strip():
@@ -208,26 +246,24 @@ class BreakpointHandler(gdb.Breakpoint):
                 if len(parts) == 2:
                     var_name = parts[0].strip()
                     var_value = parts[1].strip()
-                    frame_info_dict["args"]["variables"][var_name] = hex(int(var_value))
+                    frame_state.args["variables"][var_name] = hex(int(var_value))
 
-        if frame_info_dict['level'] == 0:
-            rip = frame_info_dict["rip"]
+        if frame_state.level == 0:
+            rip = frame_state.rip
             gdb.execute("set listsize 30")
-            frame_info_dict["current_c_source"] = gdb.execute(f"list *{rip}", to_string=True)
-            frame_info_dict["current_c_source"] = f'rip: {frame_info_dict["current_c_source"]}'
-            frame_info_dict["current_asm_source"] = gdb.execute(f"disassemble {rip}", to_string=True)
-            frame_info_dict["current_asm_source"] = frame_info_dict["current_asm_source"].replace("=>", "rip =>")
-            frame_info_dict["current_asm_source"] = frame_info_dict["current_asm_source"].replace(
-                "   0x", "       0x"
-            )
+            frame_state.current_c_source = gdb.execute(f"list *{rip}", to_string=True)
+            frame_state.current_c_source = f"rip: {frame_state.current_c_source}"
+            frame_state.current_asm_source = gdb.execute(f"disassemble {rip}", to_string=True)
+            frame_state.current_asm_source = frame_state.current_asm_source.replace("=>", "rip =>")
+            frame_state.current_asm_source = frame_state.current_asm_source.replace("   0x", "       0x")
             try:
-                frame_info_dict["current_asm_inst"] = gdb.execute(f"x/i {rip}", to_string=True)
+                frame_state.current_asm_inst = gdb.execute(f"x/i {rip}", to_string=True)
             except:
-                frame_info_dict["current_asm_inst"] = 'NO_ACCESS'
+                frame_state.current_asm_inst = "NO_ACCESS"
 
             gdb.execute("set listsize 1")
-            frame_info_dict["current_c_inst"] = gdb.execute(f"list *{rip}", to_string=True)
-        return frame_info_dict
+            frame_state.current_c_inst = gdb.execute(f"list *{rip}", to_string=True)
+        return frame_state
 
 
 class BreakEveryInstruction(gdb.Command):
@@ -280,49 +316,11 @@ class BreakEveryInstruction(gdb.Command):
                         if label in user_defined_functions:
                             BreakpointHandler(f"*{parts[0]}")
 
-        #print(f"Breakpoints set at instructions of user-defined functions.")
+        print(f"Breakpoints set at instructions of user-defined functions.")
         info_breakpoint = gdb.execute(f"info breakpoints", to_string=True)
-        #print(info_breakpoint)
+        print(info_breakpoint)
 
-def print_state(idx, registers, frames):
-    for frame_info_dict in frames:
-        print(f"#{idx}")
-        print("===================================================================")
-        pprint.pprint(registers)
-        print_frame_info_dict = dict(frame_info_dict)
-        del print_frame_info_dict["current_c_source"]
-        del print_frame_info_dict["current_c_inst"]
-        del print_frame_info_dict["current_asm_source"]
-        del print_frame_info_dict["current_asm_inst"]
-        del print_frame_info_dict["memory"]
-        del print_frame_info_dict["frame_info"]
-        print()
-        print(frame_info_dict["frame_info"])
-        pprint.pprint(print_frame_info_dict)
-        print()
-        print()
-        print(frame_info_dict["current_c_source"])
-        print(frame_info_dict["current_c_inst"])
-        print(frame_info_dict["current_asm_source"])
-        print()
-        print(frame_info_dict["current_asm_inst"])
-        for address, value in frame_info_dict["memory"]:
-            print(f"{address} : {value}")
-        print()
-    print("===================================================================")
-    sys.stdout.flush()
 
-# def aggregate_history(all_frames):
-#     for idx in range(len(all_frames) - 1):
-#         cur_dump_id, cur_registers, cur_frames = all_frames[idx]
-#         next_dump_id, next_registers, next_frames = all_frames[idx + 1]
-#         assert cur_dump_id + 1 == next_dump_id
-        # if current frame dont have any history, create a new one or just append
-
-        # new frame is in top of next_frames
-        # if len(next_frames) > len(cur_frames):
-        
-        
 FullDisassembly()
 BreakEveryInstruction()
 
@@ -335,7 +333,7 @@ gdb.execute("full_disassembly_text_section")
 # Start the program
 gdb.execute("run")
 
-for state in ALL_FRAMES:
-    print_state(*state)
+for state in PROGRAM_STATES:
+    print(state)
 
 gdb.execute("q")

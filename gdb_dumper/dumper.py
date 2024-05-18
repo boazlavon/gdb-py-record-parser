@@ -143,7 +143,9 @@ class BreakpointHandler(gdb.Breakpoint):
             "called_by": None,
             "caller_of": None,
             "current_c_source": None,
+            "current_c_inst": None,
             "current_asm_source": None,
+            "current_asm_inst": None,
             "memory": None,
             "function_name": None,
             "source_location": None,
@@ -208,14 +210,23 @@ class BreakpointHandler(gdb.Breakpoint):
                     var_value = parts[1].strip()
                     frame_info_dict["args"]["variables"][var_name] = hex(int(var_value))
 
-        pc = frame.pc()
-        frame_info_dict["current_c_source"] = gdb.execute(f"list *{pc}", to_string=True)
-        frame_info_dict["current_c_source"] = f'rip: {frame_info_dict["current_c_source"]}'
-        frame_info_dict["current_asm_source"] = gdb.execute(f"disassemble {pc}", to_string=True)
-        frame_info_dict["current_asm_source"] = frame_info_dict["current_asm_source"].replace("=>", "rip =>")
-        frame_info_dict["current_asm_source"] = frame_info_dict["current_asm_source"].replace(
-            "   0x", "       0x"
-        )
+        if frame_info_dict['level'] == 0:
+            rip = frame_info_dict["rip"]
+            gdb.execute("set listsize 30")
+            frame_info_dict["current_c_source"] = gdb.execute(f"list *{rip}", to_string=True)
+            frame_info_dict["current_c_source"] = f'rip: {frame_info_dict["current_c_source"]}'
+            frame_info_dict["current_asm_source"] = gdb.execute(f"disassemble {rip}", to_string=True)
+            frame_info_dict["current_asm_source"] = frame_info_dict["current_asm_source"].replace("=>", "rip =>")
+            frame_info_dict["current_asm_source"] = frame_info_dict["current_asm_source"].replace(
+                "   0x", "       0x"
+            )
+            try:
+                frame_info_dict["current_asm_inst"] = gdb.execute(f"x/i {rip}", to_string=True)
+            except:
+                frame_info_dict["current_asm_inst"] = 'NO_ACCESS'
+
+            gdb.execute("set listsize 1")
+            frame_info_dict["current_c_inst"] = gdb.execute(f"list *{rip}", to_string=True)
         return frame_info_dict
 
 
@@ -269,33 +280,20 @@ class BreakEveryInstruction(gdb.Command):
                         if label in user_defined_functions:
                             BreakpointHandler(f"*{parts[0]}")
 
-        print(f"Breakpoints set at instructions of user-defined functions.")
+        #print(f"Breakpoints set at instructions of user-defined functions.")
         info_breakpoint = gdb.execute(f"info breakpoints", to_string=True)
-        print(info_breakpoint)
-
-
-FullDisassembly()
-BreakEveryInstruction()
-
-# Set the breakpoints and handlers
-gdb.execute("set disassembly-flavor intel")
-gdb.execute("set listsize 30")
-gdb.execute("break_every_instruction")
-gdb.execute("full_disassembly_text_section")
-
-# Start the program
-gdb.execute("run")
-
+        #print(info_breakpoint)
 
 def print_state(idx, registers, frames):
-
     for frame_info_dict in frames:
         print(f"#{idx}")
         print("===================================================================")
         pprint.pprint(registers)
         print_frame_info_dict = dict(frame_info_dict)
         del print_frame_info_dict["current_c_source"]
+        del print_frame_info_dict["current_c_inst"]
         del print_frame_info_dict["current_asm_source"]
+        del print_frame_info_dict["current_asm_inst"]
         del print_frame_info_dict["memory"]
         del print_frame_info_dict["frame_info"]
         print()
@@ -304,13 +302,38 @@ def print_state(idx, registers, frames):
         print()
         print()
         print(frame_info_dict["current_c_source"])
+        print(frame_info_dict["current_c_inst"])
         print(frame_info_dict["current_asm_source"])
+        print()
+        print(frame_info_dict["current_asm_inst"])
         for address, value in frame_info_dict["memory"]:
             print(f"{address} : {value}")
         print()
     print("===================================================================")
     sys.stdout.flush()
 
+# def aggregate_history(all_frames):
+#     for idx in range(len(all_frames) - 1):
+#         cur_dump_id, cur_registers, cur_frames = all_frames[idx]
+#         next_dump_id, next_registers, next_frames = all_frames[idx + 1]
+#         assert cur_dump_id + 1 == next_dump_id
+        # if current frame dont have any history, create a new one or just append
+
+        # new frame is in top of next_frames
+        # if len(next_frames) > len(cur_frames):
+        
+        
+FullDisassembly()
+BreakEveryInstruction()
+
+# Set the breakpoints and handlers
+gdb.execute("set disassembly-flavor intel")
+gdb.execute("set listsize 1")
+gdb.execute("break_every_instruction")
+gdb.execute("full_disassembly_text_section")
+
+# Start the program
+gdb.execute("run")
 
 for state in ALL_FRAMES:
     print_state(*state)

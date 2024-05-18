@@ -1,7 +1,8 @@
 import gdb
 import struct
-import sys
 import pprint
+import os
+import io
 
 WORD_SIZE_BYTES = 8
 
@@ -47,8 +48,8 @@ class FrameState:
             "rip": self.rip,
             "saved_rip": self.saved_rip,
             "saved_rip_address": self.saved_rip_address,
-            "called_by": self.called_by,
-            "caller_of": self.caller_of,
+            #"called_by": self.called_by,
+            #"caller_of": self.caller_of,
             "current_c_source": self.current_c_source,
             "current_c_inst": self.current_c_inst,
             "current_asm_source": self.current_asm_source,
@@ -59,7 +60,41 @@ class FrameState:
         }
 
     def __str__(self):
-        return pprint.pformat(self.__dict__())
+        output_str = io.StringIO()
+        props = {
+            "level": self.level,
+            #"frame_info": self.frame_info,
+            "stack_frame_address": self.stack_frame_address,
+            "locals": self.locals,
+            "args": self.args,
+            "previous_sp": self.previous_sp,
+            "saved_rbp_address": self.saved_rbp_address,
+            "rip": self.rip,
+            "saved_rip": self.saved_rip,
+            "saved_rip_address": self.saved_rip_address,
+            #"called_by": self.called_by,
+            #"caller_of": self.caller_of,
+            #"current_c_source": self.current_c_source,
+            #"current_c_inst": self.current_c_inst,
+            #"current_asm_source": self.current_asm_source,
+            #"current_asm_inst": self.current_asm_inst,
+            #"memory": self.memory,
+            "function_name": self.function_name,
+            "source_location": self.source_location,
+        } 
+        pprint.pprint(props, stream=output_str)
+        print(file=output_str)
+
+        print(self.current_c_source, file=output_str)
+        print(self.current_c_inst, file=output_str)
+        print(self.current_asm_source, file=output_str)
+        print(self.current_asm_inst, file=output_str)
+        for (address, value) in self.memory:
+            print(f'{address} : {value}', file=output_str)
+        print(file=output_str)
+        result = output_str.getvalue()
+        output_str.close()
+        return result
 
 
 class ProgramState:
@@ -76,7 +111,23 @@ class ProgramState:
         }
 
     def __str__(self):
-        return pprint.pformat(self.__dict__())
+        output_str = io.StringIO()
+        props = {
+            "idx": self.idx,
+            "registers": self.registers,
+        }
+        pprint.pprint(props, stream=output_str)
+
+        print('frames:', file=output_str)
+        result = output_str.getvalue()
+        output_str.close()
+
+        for frame in self.frames:
+            result += f'level: {frame.level}\n'
+            result += str(frame)
+
+        return result
+
 
 
 class FullDisassembly(gdb.Command):
@@ -334,6 +385,7 @@ gdb.execute("full_disassembly_text_section")
 gdb.execute("run")
 
 for state in PROGRAM_STATES:
-    print(state)
+    print(f"state: {state.idx}")
+    print(str(state))
 
 gdb.execute("q")

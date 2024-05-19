@@ -9,10 +9,6 @@ WORD_SIZE_BYTES = 8
 # Global counter for dump files
 dump_counter = 1
 
-# List to store all frames information
-PROGRAM_STATES = []
-
-
 class FrameState:
     def __init__(self, level):
         self.level = level
@@ -31,6 +27,7 @@ class FrameState:
         self.current_c_inst = None
         self.current_asm_source = None
         self.current_asm_inst = None
+        self.next_asm_inst = None
         self.memory = None
         self.function_name = None
         self.source_location = None
@@ -54,6 +51,7 @@ class FrameState:
             "current_c_inst": self.current_c_inst,
             "current_asm_source": self.current_asm_source,
             "current_asm_inst": self.current_asm_inst,
+            "next_asm_inst": self.current_asm_inst,
             "memory": self.memory,
             "function_name": self.function_name,
             "source_location": self.source_location,
@@ -79,6 +77,7 @@ class FrameState:
             #"current_asm_source": self.current_asm_source,
             #"current_asm_inst": self.current_asm_inst,
             #"memory": self.memory,
+            # "memory": self.memory,
             "function_name": self.function_name,
             "source_location": self.source_location,
         } 
@@ -88,7 +87,9 @@ class FrameState:
         print(self.current_c_source, file=output_str)
         print(self.current_c_inst, file=output_str)
         print(self.current_asm_source, file=output_str)
-        print(self.current_asm_inst, file=output_str)
+        print(f"Current ASM Instruction:\n{self.current_asm_inst}", file=output_str)
+        print(f"Next ASM Instruction:\n{self.next_asm_inst}\n", file=output_str)
+        print(f"Stack Frame Memory:", file=output_str)
         for (address, value) in self.memory:
             print(f'{address} : {value}', file=output_str)
         print(file=output_str)
@@ -129,6 +130,24 @@ class ProgramState:
         return result
 
 
+class FullExecution:
+    def __init__(self):
+        self.program_states = []
+        
+    def finish_execution(self):
+        self._fill_next_asm_instruction()
+
+    def _fill_next_asm_instruction(self): 
+        for state_idx in range(len(self.program_states) - 1):
+            assert self.program_states[state_idx].idx + 1 == self.program_states[state_idx + 1].idx
+            # branching problem solution!
+            self.program_states[state_idx].frames[0].next_asm_inst = self.program_states[state_idx + 1].frames[0].current_asm_inst
+    
+    @property
+    def dumps_counter(self):
+        return len(self.program_states)
+    
+EXECUTION = FullExecution()
 
 class FullDisassembly(gdb.Command):
     """Disassemble the entire text section of the binary."""
@@ -159,11 +178,9 @@ class BreakpointHandler(gdb.Breakpoint):
         super().__init__(spec)
 
     def stop(self):
-        global dump_counter
-
         # Dump the current state
-        self.dump_state(dump_counter)
-        dump_counter += 1
+        global EXECUTION
+        self.dump_state(EXECUTION.dumps_counter)
 
     def validate_frames(self, frames, registers_dict):
         i = 1
@@ -211,8 +228,8 @@ class BreakpointHandler(gdb.Breakpoint):
             frame_info.memory = self.dump_frame_memory(frame_info)
 
         program_state = ProgramState(idx, registers_dict, frames)
-        global PROGRAM_STATES
-        PROGRAM_STATES.append(program_state)
+        global EXECUTION
+        EXECUTION.program_states.append(program_state)
 
     def parse_registers(self):
         registers_output = gdb.execute("info registers", to_string=True)
@@ -384,7 +401,9 @@ gdb.execute("full_disassembly_text_section")
 # Start the program
 gdb.execute("run")
 
-for state in PROGRAM_STATES:
+EXECUTION.finish_execution()
+
+for state in EXECUTION.program_states:
     print(f"state: {state.idx}")
     print(str(state))
 
